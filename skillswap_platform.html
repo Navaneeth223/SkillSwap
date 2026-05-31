@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkillSwap</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#050811;--bg2:#0a1020;--bg3:#0d1628;
+    --card:#0f1a2e;--card2:#121f35;
+    --accent:#4f8ef7;--accent2:#7c3aed;--accent3:#06d6a0;
+    --gold:#f59e0b;--coral:#f97316;
+    --text:#f0f4ff;--text2:#8899bb;--text3:#4a5a7a;
+    --border:rgba(79,142,247,0.15);--border2:rgba(79,142,247,0.25);
+    --glow:rgba(79,142,247,0.4);
+    --r:16px;--r2:12px;--r3:24px;
+  }
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden;min-height:100vh}
+  h1,h2,h3,h4,.brand{font-family:'Syne',sans-serif}
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar{width:4px}
+  ::-webkit-scrollbar-track{background:var(--bg2)}
+  ::-webkit-scrollbar-thumb{background:var(--accent);border-radius:4px}
+
+  /* ── CANVAS HERO ── */
+  #hero{position:relative;width:100%;height:420px;overflow:hidden}
+  #three-canvas{position:absolute;inset:0;width:100%;height:100%}
+  .hero-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,8,17,0) 40%,rgba(5,8,17,1) 100%);pointer-events:none}
+  .hero-content{position:absolute;bottom:0;left:0;right:0;padding:2rem 2rem 1.5rem;z-index:2}
+  .brand-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(79,142,247,0.1);border:1px solid var(--border2);padding:6px 14px;border-radius:100px;font-size:12px;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;font-weight:600;margin-bottom:1rem}
+  .hero-title{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;line-height:1.1;letter-spacing:-1px;margin-bottom:.75rem}
+  .hero-title span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .hero-sub{color:var(--text2);font-size:15px;max-width:480px;line-height:1.6}
+  .hero-stats{display:flex;gap:2rem;margin-top:1.25rem}
+  .stat{display:flex;flex-direction:column}
+  .stat-num{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--accent)}
+  .stat-label{font-size:11px;color:var(--text3);letter-spacing:.5px;text-transform:uppercase}
+
+  /* ── NAV ── */
+  nav{display:flex;align-items:center;justify-content:space-between;padding:.9rem 2rem;background:rgba(5,8,17,0.8);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+  .nav-brand{font-size:1.3rem;font-weight:800;color:var(--text);letter-spacing:-0.5px}
+  .nav-brand span{color:var(--accent)}
+  .nav-tabs{display:flex;gap:4px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:3px}
+  .nav-tab{padding:6px 14px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);transition:.2s;border:none;background:transparent;font-family:inherit}
+  .nav-tab.active{background:var(--accent);color:#fff}
+  .nav-tab:hover:not(.active){color:var(--text);background:var(--bg3)}
+  .nav-right{display:flex;align-items:center;gap:.75rem}
+  .notif-btn{width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;position:relative}
+  .notif-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;background:var(--coral);border-radius:50%;border:1.5px solid var(--bg)}
+  .avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;cursor:pointer;border:2px solid var(--accent)}
+
+  /* ── LAYOUT ── */
+  .app-body{display:grid;grid-template-columns:260px 1fr;gap:0;min-height:calc(100vh - 60px)}
+  .sidebar{background:var(--bg2);border-right:1px solid var(--border);padding:1.5rem 1.25rem;display:flex;flex-direction:column;gap:.5rem;height:calc(100vh - 60px);position:sticky;top:60px;overflow-y:auto}
+  .main{padding:1.5rem 2rem;overflow-y:auto}
+
+  /* ── SIDEBAR ── */
+  .sidebar-section{margin-bottom:.5rem}
+  .sidebar-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:.5rem .75rem;font-weight:600}
+  .sidebar-item{display:flex;align-items:center;gap:.75rem;padding:.65rem .75rem;border-radius:var(--r2);cursor:pointer;font-size:14px;color:var(--text2);transition:.15s;border:none;background:transparent;width:100%;text-align:left;font-family:inherit}
+  .sidebar-item:hover{background:var(--card);color:var(--text)}
+  .sidebar-item.active{background:rgba(79,142,247,0.15);color:var(--accent);font-weight:500}
+  .sidebar-item .icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--card2);flex-shrink:0}
+  .sidebar-item.active .icon{background:rgba(79,142,247,0.2)}
+  .badge{background:var(--accent);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:100px;margin-left:auto}
+  .badge.gold{background:var(--gold);color:#000}
+
+  /* ── SEARCH BAR ── */
+  .search-wrap{position:relative;margin-bottom:1.5rem}
+  .search-input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:.85rem 1rem .85rem 3rem;font-size:15px;color:var(--text);outline:none;font-family:inherit;transition:.2s}
+  .search-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,142,247,0.1)}
+  .search-input::placeholder{color:var(--text3)}
+  .search-icon{position:absolute;left:1rem;top:50%;transform:translateY(-50%);font-size:18px;color:var(--text3)}
+  .filter-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem}
+  .filter-chip{padding:6px 14px;border-radius:100px;border:1px solid var(--border);font-size:12px;font-weight:500;cursor:pointer;transition:.15s;background:transparent;color:var(--text2);font-family:inherit}
+  .filter-chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .filter-chip:hover:not(.active){border-color:var(--border2);color:var(--text)}
+
+  /* ── SECTION HEADERS ── */
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+  .section-title{font-size:17px;font-weight:700;letter-spacing:-.3px}
+  .see-all{font-size:13px;color:var(--accent);cursor:pointer;text-decoration:none;background:none;border:none;font-family:inherit}
+
+  /* ── CARDS GRID ── */
+  .cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:2rem}
+  .skill-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r3);padding:1.25rem;cursor:pointer;transition:.2s;position:relative;overflow:hidden}
+  .skill-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));opacity:0;transition:.2s}
+  .skill-card:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,0.4)}
+  .skill-card:hover::before{opacity:1}
+  .card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem}
+  .user-row{display:flex;align-items:center;gap:.65rem}
+  .u-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;border:2px solid transparent}
+  .u-name{font-size:14px;font-weight:600}
+  .u-loc{font-size:12px;color:var(--text3);margin-top:1px}
+  .card-badge{padding:4px 10px;border-radius:100px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .card-title{font-size:16px;font-weight:700;margin-bottom:.4rem;letter-spacing:-.2px;font-family:'Syne',sans-serif}
+  .card-desc{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:1rem}
+  .card-tags{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem}
+  .tag{padding:4px 10px;border-radius:6px;font-size:11px;background:var(--card2);color:var(--text2);border:1px solid var(--border);font-weight:500}
+  .card-footer{display:flex;align-items:center;justify-content:space-between}
+  .want-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px}
+  .want-skill{font-size:13px;font-weight:600;color:var(--accent3);margin-top:2px}
+  .match-btn{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:inherit;transition:.15s;letter-spacing:.3px}
+  .match-btn:hover{opacity:.85;transform:scale(1.03)}
+  .stars{color:var(--gold);font-size:12px;margin-top:2px}
+
+  /* ── MATCH BADGE ── */
+  .match-pct{position:absolute;top:1rem;right:1rem;background:linear-gradient(135deg,var(--accent3),#059669);color:#fff;font-size:11px;font-weight:800;padding:4px 9px;border-radius:100px;letter-spacing:.3px}
+
+  /* ── 3D MINI SCENE ── */
+  #mini-canvas{width:100%;height:200px;border-radius:var(--r3);overflow:hidden;margin-bottom:2rem;background:var(--card);border:1px solid var(--border);position:relative}
+  #mini-canvas canvas{width:100%!important;height:100%!important}
+  .mini-label{position:absolute;bottom:.75rem;left:1rem;font-size:12px;color:var(--text2);font-weight:500;z-index:2}
+  .mini-label strong{color:var(--accent3)}
+
+  /* ── LEADERBOARD ── */
+  .leader-list{display:flex;flex-direction:column;gap:.5rem;margin-bottom:2rem}
+  .leader-item{display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);cursor:pointer;transition:.15s}
+  .leader-item:hover{border-color:var(--border2)}
+  .rank{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;width:28px;text-align:center;flex-shrink:0}
+  .rank.gold{color:var(--gold)}
+  .rank.silver{color:#94a3b8}
+  .rank.bronze{color:var(--coral)}
+  .leader-info{flex:1}
+  .leader-name{font-size:14px;font-weight:600}
+  .leader-skills{font-size:12px;color:var(--text3);margin-top:2px}
+  .leader-swaps{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--accent3);text-align:right}
+  .leader-swap-label{font-size:10px;color:var(--text3);text-transform:uppercase;text-align:right}
+
+  /* ── CATEGORIES ── */
+  .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:.65rem;margin-bottom:2rem}
+  .cat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:.9rem .75rem;text-align:center;cursor:pointer;transition:.2s}
+  .cat-card:hover{border-color:var(--accent);background:rgba(79,142,247,0.05)}
+  .cat-icon{font-size:28px;margin-bottom:.4rem;display:block}
+  .cat-name{font-size:12px;font-weight:600;color:var(--text2)}
+  .cat-count{font-size:11px;color:var(--text3);margin-top:2px}
+
+  /* ── SWAP REQUEST MODAL ── */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:.2s;backdrop-filter:blur(8px)}
+  .modal-overlay.open{opacity:1;pointer-events:all}
+  .modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r3);padding:2rem;max-width:480px;width:100%;transform:scale(.95);transition:.25s cubic-bezier(.34,1.56,.64,1)}
+  .modal-overlay.open .modal{transform:scale(1)}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem}
+  .modal-title{font-size:18px;font-weight:800;font-family:'Syne',sans-serif}
+  .close-btn{width:32px;height:32px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:var(--text2)}
+  .swap-display{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:center;margin-bottom:1.5rem}
+  .swap-side{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1rem;text-align:center}
+  .swap-side-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:.5rem}
+  .swap-side-skill{font-size:15px;font-weight:700;color:var(--text);font-family:'Syne',sans-serif}
+  .swap-side-user{font-size:12px;color:var(--text2);margin-top:.25rem}
+  .swap-arrow{font-size:24px;color:var(--accent);text-align:center;font-weight:700}
+  .msg-label{font-size:13px;color:var(--text2);margin-bottom:.5rem;font-weight:500}
+  .msg-input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:.75rem 1rem;font-size:14px;color:var(--text);outline:none;font-family:inherit;resize:none;line-height:1.6;min-height:80px;transition:.2s}
+  .msg-input:focus{border-color:var(--accent)}
+  .msg-input::placeholder{color:var(--text3)}
+  .modal-actions{display:flex;gap:.75rem;margin-top:1.25rem}
+  .btn-primary{flex:1;padding:.85rem;border-radius:var(--r2);font-size:14px;font-weight:700;cursor:pointer;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-family:inherit;transition:.15s;letter-spacing:.3px}
+  .btn-primary:hover{opacity:.85}
+  .btn-secondary{padding:.85rem 1.25rem;border-radius:var(--r2);font-size:14px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:transparent;color:var(--text2);font-family:inherit;transition:.15s}
+  .btn-secondary:hover{background:var(--card);color:var(--text)}
+
+  /* ── POST SKILL FORM ── */
+  .form-section{background:var(--card);border:1px solid var(--border);border-radius:var(--r3);padding:1.75rem;margin-bottom:2rem}
+  .form-title{font-size:17px;font-weight:800;font-family:'Syne',sans-serif;margin-bottom:1.5rem;display:flex;align-items:center;gap:.5rem}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem}
+  .form-group{display:flex;flex-direction:column;gap:.4rem;margin-bottom:1rem}
+  .form-label{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+  .form-input{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:.7rem 1rem;font-size:14px;color:var(--text);outline:none;font-family:inherit;transition:.2s}
+  .form-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,142,247,0.08)}
+  .form-input::placeholder{color:var(--text3)}
+  .form-select{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:.7rem 1rem;font-size:14px;color:var(--text);outline:none;font-family:inherit;cursor:pointer;transition:.2s}
+  .form-select:focus{border-color:var(--accent)}
+  .char-counter{font-size:11px;color:var(--text3);text-align:right;margin-top:2px}
+
+  /* ── TOAST ── */
+  .toast{position:fixed;bottom:2rem;right:2rem;background:var(--card2);border:1px solid var(--accent3);border-radius:var(--r);padding:1rem 1.5rem;font-size:14px;color:var(--text);z-index:2000;transform:translateY(100px);opacity:0;transition:.3s cubic-bezier(.34,1.56,.64,1);max-width:320px}
+  .toast.show{transform:translateY(0);opacity:1}
+  .toast-icon{color:var(--accent3);margin-right:.5rem;font-size:16px}
+
+  /* ── PROFILE SECTION ── */
+  .profile-hero{background:linear-gradient(135deg,rgba(79,142,247,0.08),rgba(124,58,237,0.08));border:1px solid var(--border);border-radius:var(--r3);padding:2rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1.5rem}
+  .profile-avatar{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;flex-shrink:0;border:3px solid var(--accent);box-shadow:0 0 30px rgba(79,142,247,0.3)}
+  .profile-name{font-size:24px;font-weight:800;font-family:'Syne',sans-serif;margin-bottom:.25rem}
+  .profile-location{font-size:14px;color:var(--text2);margin-bottom:.75rem}
+  .profile-badges{display:flex;gap:.5rem;flex-wrap:wrap}
+  .p-badge{padding:4px 12px;border-radius:100px;font-size:11px;font-weight:700;border:1px solid}
+  .p-badge.verified{background:rgba(79,142,247,0.1);border-color:var(--accent);color:var(--accent)}
+  .p-badge.premium{background:rgba(245,158,11,0.1);border-color:var(--gold);color:var(--gold)}
+  .p-badge.top{background:rgba(6,214,160,0.1);border-color:var(--accent3);color:var(--accent3)}
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.5rem}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r2);padding:1rem;text-align:center}
+  .stat-card-num{font-size:24px;font-weight:800;font-family:'Syne',sans-serif;color:var(--accent)}
+  .stat-card-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+
+  /* ── PREMIUM BANNER ── */
+  .premium-banner{background:linear-gradient(135deg,rgba(245,158,11,0.1),rgba(249,115,22,0.1));border:1px solid rgba(245,158,11,0.3);border-radius:var(--r);padding:1.25rem 1.5rem;display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;cursor:pointer;transition:.2s}
+  .premium-banner:hover{border-color:var(--gold)}
+  .premium-icon{font-size:32px;flex-shrink:0}
+  .premium-text{flex:1}
+  .premium-title{font-size:14px;font-weight:700;color:var(--gold);font-family:'Syne',sans-serif}
+  .premium-desc{font-size:12px;color:var(--text2);margin-top:2px}
+  .premium-cta{padding:8px 16px;border-radius:8px;background:var(--gold);color:#000;font-size:12px;font-weight:800;border:none;cursor:pointer;font-family:inherit;white-space:nowrap}
+
+  /* ── ACTIVITY FEED ── */
+  .feed-item{display:flex;gap:.75rem;padding:.9rem;background:var(--card);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:.5rem}
+  .feed-dot{width:8px;height:8px;border-radius:50%;background:var(--accent3);margin-top:5px;flex-shrink:0}
+  .feed-text{font-size:13px;color:var(--text2);line-height:1.5}
+  .feed-text strong{color:var(--text);font-weight:600}
+  .feed-time{font-size:11px;color:var(--text3);margin-top:3px}
+
+  /* ── CHAT SIDEBAR ── */
+  .chat-item{display:flex;gap:.75rem;padding:.85rem .75rem;border-radius:var(--r2);cursor:pointer;transition:.15s;margin-bottom:2px}
+  .chat-item:hover{background:var(--card)}
+  .chat-item.active{background:rgba(79,142,247,0.1)}
+  .chat-meta{flex:1;min-width:0}
+  .chat-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chat-preview{font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  .chat-time{font-size:11px;color:var(--text3)}
+  .unread{width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:2px}
+
+  /* ── RESPONSIVE ── */
+  @media(max-width:768px){
+    .app-body{grid-template-columns:1fr}
+    .sidebar{display:none}
+    .form-row{grid-template-columns:1fr}
+    .stats-row{grid-template-columns:1fr 1fr}
+  }
+
+  /* ── GLOW PULSE ── */
+  @keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+  .pulse{animation:pulse 2s infinite}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  .float{animation:float 3s ease-in-out infinite}
+  @keyframes slideIn{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+  .slide-in{animation:slideIn .4s ease forwards}
+
+  /* ── PAGE SECTIONS ── */
+  .page{display:none}
+  .page.active{display:block}
+</style>
+</head>
+<body>
+
+<!-- HERO 3D SCENE -->
+<div id="hero">
+  <canvas id="three-canvas"></canvas>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="brand-badge">🔄 Hyperlocal Skill Exchange</div>
+    <h1 class="hero-title">Trade Skills,<br><span>Grow Together</span></h1>
+    <p class="hero-sub">Connect with people nearby. Exchange what you know for what you need — no money, just value.</p>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-num" id="stat1">0</span><span class="stat-label">Active Users</span></div>
+      <div class="stat"><span class="stat-num" id="stat2">0</span><span class="stat-label">Skills Listed</span></div>
+      <div class="stat"><span class="stat-num" id="stat3">0</span><span class="stat-label">Swaps Done</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">Skill<span>Swap</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('discover')">🔍 Discover</button>
+    <button class="nav-tab" onclick="showPage('post')">✚ Post Skill</button>
+    <button class="nav-tab" onclick="showPage('matches')">⚡ Matches</button>
+    <button class="nav-tab" onclick="showPage('profile')">👤 Profile</button>
+  </div>
+  <div class="nav-right">
+    <div class="notif-btn" onclick="showToast('🔔 You have 3 new swap requests!')">🔔<div class="notif-dot"></div></div>
+    <div class="avatar" onclick="showPage('profile')">NK</div>
+  </div>
+</nav>
+
+<!-- APP BODY -->
+<div class="app-body">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Menu</div>
+      <button class="sidebar-item active" onclick="showPage('discover')">
+        <div class="icon">🔍</div> Discover
+      </button>
+      <button class="sidebar-item" onclick="showPage('matches')">
+        <div class="icon">⚡</div> My Matches <span class="badge">4</span>
+      </button>
+      <button class="sidebar-item" onclick="showPage('post')">
+        <div class="icon">✚</div> Post Skill
+      </button>
+      <button class="sidebar-item" onclick="showPage('profile')">
+        <div class="icon">👤</div> Profile
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Categories</div>
+      <button class="sidebar-item" onclick="filterCategory('Tech')"><div class="icon">💻</div> Tech & Dev</button>
+      <button class="sidebar-item" onclick="filterCategory('Design')"><div class="icon">🎨</div> Design</button>
+      <button class="sidebar-item" onclick="filterCategory('Music')"><div class="icon">🎵</div> Music</button>
+      <button class="sidebar-item" onclick="filterCategory('Language')"><div class="icon">🗣️</div> Languages</button>
+      <button class="sidebar-item" onclick="filterCategory('Fitness')"><div class="icon">💪</div> Fitness</button>
+      <button class="sidebar-item" onclick="filterCategory('Business')"><div class="icon">📊</div> Business</button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Trending</div>
+      <button class="sidebar-item"><div class="icon">🔥</div> React.js <span class="badge gold">Hot</span></button>
+      <button class="sidebar-item"><div class="icon">📸</div> Photography</button>
+      <button class="sidebar-item"><div class="icon">🧘</div> Yoga</button>
+    </div>
+    <div style="margin-top:auto;padding-top:1rem">
+      <div class="premium-banner" onclick="showToast('🌟 Premium unlocked! Boost your listings.')">
+        <span class="premium-icon">⭐</span>
+        <div class="premium-text">
+          <div class="premium-title">Go Premium</div>
+          <div class="premium-desc">Boost listings & get verified</div>
+        </div>
+        <button class="premium-cta">₹199/mo</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DISCOVER PAGE -->
+    <div id="page-discover" class="page active">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" placeholder="Search skills, people, or locations..." id="search-inp" oninput="filterCards()">
+      </div>
+      <div class="filter-row" id="filter-row">
+        <button class="filter-chip active" onclick="setFilter(this,'All')">All Skills</button>
+        <button class="filter-chip" onclick="setFilter(this,'Tech')">💻 Tech</button>
+        <button class="filter-chip" onclick="setFilter(this,'Design')">🎨 Design</button>
+        <button class="filter-chip" onclick="setFilter(this,'Music')">🎵 Music</button>
+        <button class="filter-chip" onclick="setFilter(this,'Language')">🗣️ Language</button>
+        <button class="filter-chip" onclick="setFilter(this,'Fitness')">💪 Fitness</button>
+        <button class="filter-chip" onclick="setFilter(this,'Business')">📊 Business</button>
+        <button class="filter-chip" onclick="setFilter(this,'Food')">🍳 Cooking</button>
+      </div>
+
+      <!-- 3D MINI SCENE -->
+      <div id="mini-canvas" style="position:relative">
+        <div class="mini-label">🌍 <strong>47 people</strong> near Taliparamba are swapping skills right now</div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">🔥 Featured Swaps</div>
+        <button class="see-all">See all →</button>
+      </div>
+      <div class="cards-grid" id="cards-grid"></div>
+
+      <div class="section-header">
+        <div class="section-title">🏆 Top Swappers This Week</div>
+        <button class="see-all">Leaderboard →</button>
+      </div>
+      <div class="leader-list" id="leader-list"></div>
+
+      <div class="section-header">
+        <div class="section-title">📂 Browse Categories</div>
+      </div>
+      <div class="cat-grid" id="cat-grid"></div>
+
+      <div class="section-header">
+        <div class="section-title">⚡ Live Activity</div>
+      </div>
+      <div id="activity-feed"></div>
+    </div>
+
+    <!-- POST SKILL PAGE -->
+    <div id="page-post" class="page">
+      <div class="form-section">
+        <div class="form-title">✚ List a New Skill</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Skill Title</label>
+            <input type="text" class="form-input" placeholder="e.g. React.js Development" id="post-title" maxlength="60">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" id="post-cat">
+              <option>Tech & Dev</option><option>Design</option><option>Music</option>
+              <option>Language</option><option>Fitness</option><option>Business</option><option>Cooking</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-input" id="post-desc" rows="3" placeholder="Describe what you can offer and your experience level..." maxlength="200" oninput="updateCounter(this,'post-desc-count',200)"></textarea>
+          <div class="char-counter"><span id="post-desc-count">0</span>/200</div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">I Want in Return</label>
+            <input type="text" class="form-input" placeholder="e.g. Guitar Lessons" id="post-want">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Experience Level</label>
+            <select class="form-select" id="post-level">
+              <option>Beginner</option><option>Intermediate</option><option>Expert</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input type="text" class="form-input" placeholder="City / District" id="post-loc" value="Taliparamba, Kannur">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Availability</label>
+            <select class="form-select" id="post-avail">
+              <option>Weekends</option><option>Weekdays</option><option>Evenings</option><option>Flexible</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tags (comma separated)</label>
+          <input type="text" class="form-input" placeholder="react, javascript, frontend" id="post-tags">
+        </div>
+        <button class="btn-primary" style="width:100%;margin-top:.5rem" onclick="publishSkill()">🚀 Publish Listing</button>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">📋 Your Active Listings</div>
+      </div>
+      <div id="my-listings" class="cards-grid"></div>
+    </div>
+
+    <!-- MATCHES PAGE -->
+    <div id="page-matches" class="page">
+      <div style="display:grid;grid-template-columns:280px 1fr;gap:1rem;height:calc(100vh - 200px)">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r3);padding:1rem;overflow-y:auto">
+          <div style="font-size:14px;font-weight:700;margin-bottom:1rem;font-family:'Syne',sans-serif">💬 Swap Chats</div>
+          <div id="chat-list"></div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r3);display:flex;flex-direction:column;overflow:hidden">
+          <div style="padding:1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.75rem">
+            <div class="u-avatar" style="background:linear-gradient(135deg,#4f8ef7,#7c3aed);color:#fff;width:40px;height:40px;font-size:14px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center">RK</div>
+            <div>
+              <div style="font-size:14px;font-weight:600">Rahul Kumar</div>
+              <div style="font-size:12px;color:var(--accent3)">● Online • React ↔ Carnatic Music</div>
+            </div>
+          </div>
+          <div id="chat-messages" style="flex:1;padding:1.25rem;overflow-y:auto;display:flex;flex-direction:column;gap:.75rem"></div>
+          <div style="padding:1rem;border-top:1px solid var(--border);display:flex;gap:.75rem">
+            <input type="text" class="form-input" style="flex:1" placeholder="Type a message..." id="chat-input" onkeydown="if(event.key==='Enter')sendChat()">
+            <button class="match-btn" onclick="sendChat()">Send →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE PAGE -->
+    <div id="page-profile" class="page">
+      <div class="profile-hero">
+        <div class="profile-avatar">NK</div>
+        <div style="flex:1">
+          <div class="profile-name">Navaneeth KV</div>
+          <div class="profile-location">📍 Taliparamba, Kannur, Kerala</div>
+          <div class="profile-badges">
+            <span class="p-badge verified">✓ Verified</span>
+            <span class="p-badge premium">⭐ Premium</span>
+            <span class="p-badge top">🏆 Top Swapper</span>
+          </div>
+        </div>
+        <button class="btn-secondary">Edit Profile</button>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-card-num">12</div><div class="stat-card-label">Skills Listed</div></div>
+        <div class="stat-card"><div class="stat-card-num">34</div><div class="stat-card-label">Swaps Done</div></div>
+        <div class="stat-card"><div class="stat-card-num">4.9</div><div class="stat-card-label">Avg Rating</div></div>
+        <div class="stat-card"><div class="stat-card-num">8</div><div class="stat-card-label">Active Chats</div></div>
+      </div>
+      <div class="section-header"><div class="section-title">🛠️ Skills I Offer</div></div>
+      <div class="cards-grid" id="profile-skills"></div>
+      <div class="section-header"><div class="section-title">📜 Recent Reviews</div></div>
+      <div id="profile-reviews"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚡ Request a Swap</div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="swap-display">
+      <div class="swap-side">
+        <div class="swap-side-label">You Offer</div>
+        <div class="swap-side-skill" id="modal-offer">Web Dev</div>
+        <div class="swap-side-user">Navaneeth KV</div>
+      </div>
+      <div class="swap-arrow">⇄</div>
+      <div class="swap-side">
+        <div class="swap-side-label">You Receive</div>
+        <div class="swap-side-skill" id="modal-receive">Guitar</div>
+        <div class="swap-side-user" id="modal-user">Arjun S.</div>
+      </div>
+    </div>
+    <div class="msg-label">Add a personal note</div>
+    <textarea class="msg-input" id="modal-msg" placeholder="Hi! I'd love to swap skills with you. I have 3 years of experience in..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitSwap()">🚀 Send Request</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><span class="toast-icon"></span><span id="toast-msg"></span></div>
+
+<script>
+// ─── DATA ───────────────────────────────
+const skills=[
+  {id:1,name:"Arjun S.",initials:"AS",color:"linear-gradient(135deg,#4f8ef7,#7c3aed)",loc:"Kannur",offer:"Full-Stack Web Dev",want:"Carnatic Music",desc:"MERN stack developer with 4 years experience. Can build complete web apps.",tags:["React","Node.js","MongoDB"],cat:"Tech",rating:4.8,reviews:23,match:97},
+  {id:2,name:"Priya M.",initials:"PM",color:"linear-gradient(135deg,#06d6a0,#0891b2)",loc:"Taliparamba",offer:"UI/UX Design",want:"Python Backend",desc:"Figma expert. Can design beautiful, conversion-optimized user interfaces.",tags:["Figma","Prototyping","UX"],cat:"Design",rating:4.9,reviews:31,match:94},
+  {id:3,name:"Ravi K.",initials:"RK",color:"linear-gradient(135deg,#f59e0b,#f97316)",loc:"Kozhikode",offer:"Carnatic Violin",want:"Web Development",desc:"10+ years classical music. Teaching beginner to intermediate students.",tags:["Violin","Classical","Theory"],cat:"Music",rating:5.0,reviews:18,match:91},
+  {id:4,name:"Anika T.",initials:"AT",color:"linear-gradient(135deg,#ec4899,#a855f7)",loc:"Thalassery",offer:"Japanese Language",want:"Graphic Design",desc:"JLPT N2 certified. Conversational Japanese for beginners and intermediate.",tags:["Japanese","JLPT","Conversation"],cat:"Language",rating:4.7,reviews:14,match:88},
+  {id:5,name:"Dev P.",initials:"DP",color:"linear-gradient(135deg,#10b981,#059669)",loc:"Kannur",offer:"Personal Training",want:"Mobile App Dev",desc:"Certified fitness trainer. Strength, HIIT, and nutrition planning.",tags:["Strength","HIIT","Nutrition"],cat:"Fitness",rating:4.9,reviews:42,match:85},
+  {id:6,name:"Sana A.",initials:"SA",color:"linear-gradient(135deg,#ef4444,#b91c1c)",loc:"Mananthavady",offer:"Digital Marketing",want:"Video Editing",desc:"SEO, Meta Ads, content strategy. Grew multiple brands from 0 to 10k followers.",tags:["SEO","Ads","Content"],cat:"Business",rating:4.6,reviews:29,match:82},
+  {id:7,name:"Kiran J.",initials:"KJ",color:"linear-gradient(135deg,#8b5cf6,#6d28d9)",loc:"Taliparamba",offer:"Flutter Dev",want:"English Tutoring",desc:"2 years Flutter experience. Built 4 published apps on Play Store.",tags:["Flutter","Dart","Firebase"],cat:"Tech",rating:4.8,reviews:11,match:79},
+  {id:8,name:"Meera R.",initials:"MR",color:"linear-gradient(135deg,#0ea5e9,#2563eb)",loc:"Payyannur",offer:"Yoga & Meditation",want:"Cooking Classes",desc:"500-hour certified yoga instructor. Hatha, Vinyasa, and mindfulness.",tags:["Hatha","Vinyasa","Mindfulness"],cat:"Fitness",rating:5.0,reviews:37,match:76},
+  {id:9,name:"Faiz N.",initials:"FN",color:"linear-gradient(135deg,#f97316,#ea580c)",loc:"Mattannur",offer:"Kerala Cuisine",want:"Photography",desc:"Traditional Kerala recipes handed down through generations. Sadhya specialist.",tags:["Kerala Food","Sadhya","Biriyani"],cat:"Food",rating:4.9,reviews:55,match:73},
+  {id:10,name:"Leela V.",initials:"LV",color:"linear-gradient(135deg,#06b6d4,#0891b2)",loc:"Thalassery",offer:"Photography",want:"Spoken Hindi",desc:"Wedding and portrait photographer. Canon R6, studio lighting expert.",tags:["Portrait","Wedding","Lightroom"],cat:"Design",rating:4.7,reviews:22,match:70},
+];
+
+const leaderboard=[
+  {name:"Priya M.",skills:"UI/UX, Figma",swaps:47,rank:1},
+  {name:"Ravi K.",skills:"Violin, Music Theory",swaps:39,rank:2},
+  {name:"Dev P.",skills:"Fitness, HIIT",swaps:34,rank:3},
+  {name:"Navaneeth KV",skills:"Web Dev, Flutter",swaps:28,rank:4},
+  {name:"Meera R.",skills:"Yoga, Meditation",swaps:26,rank:5},
+];
+
+const categories=[
+  {icon:"💻",name:"Tech & Dev",count:284},
+  {icon:"🎨",name:"Design",count:167},
+  {icon:"🎵",name:"Music",count:203},
+  {icon:"🗣️",name:"Languages",count:156},
+  {icon:"💪",name:"Fitness",count:312},
+  {icon:"📊",name:"Business",count:134},
+  {icon:"🍳",name:"Cooking",count:189},
+  {icon:"📸",name:"Photography",count:98},
+  {icon:"✍️",name:"Writing",count:76},
+  {icon:"🧘",name:"Wellness",count:145},
+];
+
+const activity=[
+  {text:"<strong>Arjun S.</strong> and <strong>Priya M.</strong> completed a Web Dev ↔ UI/UX swap",time:"2 min ago"},
+  {text:"<strong>Ravi K.</strong> just listed <strong>Carnatic Violin</strong> lessons",time:"8 min ago"},
+  {text:"<strong>New match!</strong> Kiran J. wants your Flutter skills",time:"15 min ago"},
+  {text:"<strong>Meera R.</strong> left a 5★ review for her Yoga swap",time:"32 min ago"},
+  {text:"<strong>47 people</strong> near Taliparamba are active right now",time:"Just now"},
+];
+
+const chatMessages=[
+  {from:"them",text:"Hey! Saw your React.js listing. I can offer Carnatic Music in return 🎵",time:"10:24 AM"},
+  {from:"me",text:"That sounds amazing! I've been wanting to learn Carnatic for a while now.",time:"10:26 AM"},
+  {from:"them",text:"Perfect timing! I need a React developer for my music school website. Deal?",time:"10:27 AM"},
+  {from:"me",text:"100% deal! When can we start? I'm free on weekends.",time:"10:28 AM"},
+  {from:"them",text:"Saturday 10 AM works for me. Let's do a 1 hour intro session each way 🙌",time:"10:29 AM"},
+];
+
+// ─── STATE ───────────────────────────────
+let activeFilter="All";
+let myListings=[];
+
+// ─── RENDER ──────────────────────────────
+function renderCards(data){
+  const g=document.getElementById('cards-grid');
+  g.innerHTML=data.map(s=>`
+    <div class="skill-card slide-in" onclick="openModal('${s.offer}','${s.want}','${s.name}')">
+      <div class="match-pct">${s.match}% match</div>
+      <div class="card-top">
+        <div class="user-row">
+          <div class="u-avatar" style="background:${s.color}">${s.initials}</div>
+          <div>
+            <div class="u-name">${s.name}</div>
+            <div class="u-loc">📍 ${s.loc}</div>
+            <div class="stars">${'★'.repeat(Math.floor(s.rating))}${'☆'.repeat(5-Math.floor(s.rating))} ${s.rating} (${s.reviews})</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-title">${s.offer}</div>
+      <div class="card-desc">${s.desc}</div>
+      <div class="card-tags">${s.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      <div class="card-footer">
+        <div>
+          <div class="want-label">Wants in return</div>
+          <div class="want-skill">🎯 ${s.want}</div>
+        </div>
+        <button class="match-btn" onclick="event.stopPropagation();openModal('${s.offer}','${s.want}','${s.name}')">Request Swap</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderLeaderboard(){
+  document.getElementById('leader-list').innerHTML=leaderboard.map(l=>`
+    <div class="leader-item">
+      <div class="rank ${l.rank===1?'gold':l.rank===2?'silver':'bronze'}">#${l.rank}</div>
+      <div class="u-avatar" style="background:linear-gradient(135deg,#4f8ef7,#7c3aed);width:36px;height:36px;font-size:12px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${l.name.split(' ').map(n=>n[0]).join('')}</div>
+      <div class="leader-info">
+        <div class="leader-name">${l.name}</div>
+        <div class="leader-skills">${l.skills}</div>
+      </div>
+      <div>
+        <div class="leader-swaps">${l.swaps}</div>
+        <div class="leader-swap-label">swaps</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderCategories(){
+  document.getElementById('cat-grid').innerHTML=categories.map(c=>`
+    <div class="cat-card" onclick="filterCategory('${c.name}')">
+      <span class="cat-icon">${c.icon}</span>
+      <div class="cat-name">${c.name}</div>
+      <div class="cat-count">${c.count} skills</div>
+    </div>
+  `).join('');
+}
+
+function renderActivity(){
+  document.getElementById('activity-feed').innerHTML=activity.map(a=>`
+    <div class="feed-item">
+      <div class="feed-dot pulse"></div>
+      <div>
+        <div class="feed-text">${a.text}</div>
+        <div class="feed-time">${a.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderChats(){
+  const chats=[
+    {initials:"RK",name:"Rahul Kumar",preview:"Saturday 10 AM works for me!",time:"10:29",unread:2,active:true},
+    {initials:"PM",name:"Priya M.",preview:"Can you review my Figma file?",time:"9:15",unread:0,active:false},
+    {initials:"AT",name:"Anika T.",preview:"Swap confirmed for next week ✓",time:"Yesterday",unread:0,active:false},
+  ];
+  document.getElementById('chat-list').innerHTML=chats.map(c=>`
+    <div class="chat-item ${c.active?'active':''}">
+      <div class="u-avatar" style="background:linear-gradient(135deg,#4f8ef7,#7c3aed);width:38px;height:38px;font-size:12px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">${c.initials}</div>
+      <div class="chat-meta">
+        <div class="chat-name">${c.name}</div>
+        <div class="chat-preview">${c.preview}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <div class="chat-time">${c.time}</div>
+        ${c.unread?`<div class="unread">${c.unread}</div>`:''}
+      </div>
+    </div>
+  `).join('');
+  renderChatMessages();
+}
+
+function renderChatMessages(){
+  document.getElementById('chat-messages').innerHTML=chatMessages.map(m=>`
+    <div style="display:flex;justify-content:${m.from==='me'?'flex-end':'flex-start'}">
+      <div style="max-width:70%;background:${m.from==='me'?'linear-gradient(135deg,var(--accent),var(--accent2))':'var(--card2)'};color:${m.from==='me'?'#fff':'var(--text)'};padding:.65rem 1rem;border-radius:${m.from==='me'?'16px 16px 4px 16px':'16px 16px 16px 4px'};font-size:14px;line-height:1.5">
+        ${m.text}
+        <div style="font-size:10px;opacity:.6;margin-top:4px;text-align:right">${m.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderProfileSkills(){
+  const mySkills=skills.slice(0,3);
+  document.getElementById('profile-skills').innerHTML=mySkills.map(s=>`
+    <div class="skill-card">
+      <div class="card-title">${s.offer}</div>
+      <div class="card-desc">${s.desc}</div>
+      <div class="card-tags">${s.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      <div style="display:flex;gap:.5rem;margin-top:.5rem">
+        <button class="match-btn" style="flex:1" onclick="showToast('✏️ Edit skill feature coming soon!')">Edit</button>
+        <button class="btn-secondary" style="flex:1" onclick="showToast('🗑️ Listing removed.')">Remove</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('profile-reviews').innerHTML=[
+    {name:"Arjun S.",rating:5,text:"Navaneeth is an amazing developer. Delivered exactly what I needed, and the React lessons were super clear!"},
+    {name:"Priya M.",rating:5,text:"Great communicator, knows his stuff. Would swap with him again anytime."},
+    {name:"Kiran J.",rating:4,text:"Helpful and professional. Very knowledgeable in MERN stack."},
+  ].map(r=>`
+    <div class="feed-item" style="margin-bottom:.5rem">
+      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${r.name.split(' ').map(n=>n[0]).join('')}</div>
+      <div>
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
+          <span style="font-size:14px;font-weight:600">${r.name}</span>
+          <span style="color:var(--gold);font-size:12px">${'★'.repeat(r.rating)}</span>
+        </div>
+        <div class="feed-text">${r.text}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── FILTER / SEARCH ─────────────────────
+function setFilter(el,cat){
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  activeFilter=cat;
+  filterCards();
+}
+
+function filterCategory(cat){
+  activeFilter=cat;
+  document.querySelectorAll('.filter-chip').forEach(c=>{
+    c.classList.toggle('active',c.textContent.includes(cat)||cat==='All');
+  });
+  filterCards();
+  showPage('discover');
+}
+
+function filterCards(){
+  const q=document.getElementById('search-inp').value.toLowerCase();
+  let data=skills;
+  if(activeFilter!=='All') data=data.filter(s=>s.cat===activeFilter||s.cat.includes(activeFilter.split(' ')[0]));
+  if(q) data=data.filter(s=>s.offer.toLowerCase().includes(q)||s.desc.toLowerCase().includes(q)||s.name.toLowerCase().includes(q)||s.tags.some(t=>t.toLowerCase().includes(q)));
+  renderCards(data);
+}
+
+// ─── PAGE NAV ────────────────────────────
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>{
+    const pages=['discover','post','matches','profile'];
+    t.classList.toggle('active',pages[i]===id);
+  });
+  if(id==='matches') renderChats();
+  if(id==='profile') renderProfileSkills();
+}
+
+// ─── MODAL ───────────────────────────────
+function openModal(offer,want,user){
+  document.getElementById('modal-offer').textContent=offer;
+  document.getElementById('modal-receive').textContent=want;
+  document.getElementById('modal-user').textContent=user;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+function submitSwap(){
+  closeModal();
+  setTimeout(()=>showToast('🎉 Swap request sent! Awaiting response.'),300);
+}
+
+// ─── TOAST ───────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  document.getElementById('toast-msg').textContent=msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ─── FORM ────────────────────────────────
+function updateCounter(el,countId,max){
+  document.getElementById(countId).textContent=el.value.length;
+}
+
+function publishSkill(){
+  const title=document.getElementById('post-title').value.trim();
+  const want=document.getElementById('post-want').value.trim();
+  const desc=document.getElementById('post-desc').value.trim();
+  const cat=document.getElementById('post-cat').value;
+  const tags=document.getElementById('post-tags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  if(!title||!want){showToast('⚠️ Please fill in the skill title and what you want.');return;}
+  const newSkill={id:Date.now(),name:"Navaneeth KV",initials:"NK",color:"linear-gradient(135deg,#4f8ef7,#7c3aed)",loc:"Taliparamba",offer:title,want,desc:desc||"No description provided.",tags:tags.length?tags:[cat],cat,rating:0,reviews:0,match:100};
+  myListings.unshift(newSkill);
+  document.getElementById('my-listings').innerHTML=myListings.map(s=>`
+    <div class="skill-card">
+      <div class="card-badge" style="background:rgba(6,214,160,0.1);color:var(--accent3);border:1px solid rgba(6,214,160,0.3);display:inline-block;margin-bottom:.5rem">✓ Active</div>
+      <div class="card-title">${s.offer}</div>
+      <div class="card-desc">${s.desc}</div>
+      <div class="card-tags">${s.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+      <div class="want-label" style="margin-top:.5rem">Wants: <span class="want-skill">${s.want}</span></div>
+    </div>
+  `).join('');
+  showToast('🚀 Skill published successfully!');
+  document.getElementById('post-title').value='';
+  document.getElementById('post-want').value='';
+  document.getElementById('post-desc').value='';
+  document.getElementById('post-tags').value='';
+}
+
+// ─── CHAT ────────────────────────────────
+function sendChat(){
+  const inp=document.getElementById('chat-input');
+  const msg=inp.value.trim();
+  if(!msg) return;
+  chatMessages.push({from:'me',text:msg,time:'Now'});
+  renderChatMessages();
+  inp.value='';
+  const msgs=document.getElementById('chat-messages');
+  msgs.scrollTop=msgs.scrollHeight;
+  setTimeout(()=>{
+    chatMessages.push({from:'them',text:"Great! Looking forward to our skill swap session 🤝",time:'Now'});
+    renderChatMessages();
+    msgs.scrollTop=msgs.scrollHeight;
+  },1200);
+}
+
+// ─── STAT COUNTER ────────────────────────
+function animateCount(el,target){
+  let cur=0;const step=Math.ceil(target/60);
+  const iv=setInterval(()=>{cur=Math.min(cur+step,target);el.textContent=cur.toLocaleString();if(cur>=target)clearInterval(iv);},24);
+}
+
+// ─── THREE.JS HERO ───────────────────────
+function initHero(){
+  const canvas=document.getElementById('three-canvas');
+  const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setSize(canvas.offsetWidth,canvas.offsetHeight);
+  renderer.shadowMap.enabled=true;
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(60,canvas.offsetWidth/canvas.offsetHeight,0.1,100);
+  camera.position.set(0,4,12);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0x1a2a4a,2));
+  const dl=new THREE.DirectionalLight(0x4f8ef7,3);
+  dl.position.set(5,8,5);dl.castShadow=true;scene.add(dl);
+  const pl=new THREE.PointLight(0x7c3aed,4,20);
+  pl.position.set(-4,3,2);scene.add(pl);
+  const pl2=new THREE.PointLight(0x06d6a0,3,15);
+  pl2.position.set(4,2,-2);scene.add(pl2);
+
+  // Ground
+  const ground=new THREE.Mesh(
+    new THREE.PlaneGeometry(40,40),
+    new THREE.MeshStandardMaterial({color:0x0a1020,roughness:.9,metalness:.1})
+  );
+  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+
+  // Grid lines
+  const grid=new THREE.GridHelper(40,40,0x1a3a6a,0x0d2040);
+  grid.position.y=.01;scene.add(grid);
+
+  // Floating skill nodes (spheres)
+  const nodes=[];
+  const nodeColors=[0x4f8ef7,0x7c3aed,0x06d6a0,0xf59e0b,0xf97316,0xec4899];
+  for(let i=0;i<18;i++){
+    const r=.15+Math.random()*.35;
+    const mesh=new THREE.Mesh(
+      new THREE.SphereGeometry(r,16,16),
+      new THREE.MeshStandardMaterial({color:nodeColors[i%6],emissive:nodeColors[i%6],emissiveIntensity:.4,roughness:.2,metalness:.6})
+    );
+    mesh.position.set((Math.random()-0.5)*18,(0.5+Math.random()*3),(Math.random()-0.5)*8-2);
+    mesh.castShadow=true;
+    scene.add(mesh);
+    nodes.push({mesh,speed:0.3+Math.random()*0.5,offset:Math.random()*Math.PI*2,ax:Math.random()-.5,az:Math.random()-.5});
+  }
+
+  // Connection lines between nodes
+  const lineMat=new THREE.LineBasicMaterial({color:0x4f8ef7,transparent:true,opacity:.15});
+  for(let i=0;i<8;i++){
+    const a=nodes[i],b=nodes[(i+3)%nodes.length];
+    const pts=[a.mesh.position,b.mesh.position];
+    const geo=new THREE.BufferGeometry().setFromPoints(pts);
+    scene.add(new THREE.Line(geo,lineMat));
+  }
+
+  // 3 main character capsules (stylized people)
+  function makeCharacter(x,color){
+    const g=new THREE.Group();
+    // body
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(.3,.35,.9,12),new THREE.MeshStandardMaterial({color,roughness:.3,metalness:.5,emissive:color,emissiveIntensity:.15}));
+    body.position.y=.45;g.add(body);
+    // head
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.28,16,16),new THREE.MeshStandardMaterial({color,roughness:.2,metalness:.6,emissive:color,emissiveIntensity:.2}));
+    head.position.y=1.2;g.add(head);
+    // arms
+    [-1,1].forEach(side=>{
+      const arm=new THREE.Mesh(new THREE.CylinderGeometry(.1,.1,.6,8),new THREE.MeshStandardMaterial({color,roughness:.3,metalness:.4}));
+      arm.rotation.z=side*Math.PI/3;arm.position.set(side*.5,.6,0);g.add(arm);
+    });
+    // glow ring
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.4,.04,8,32),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:1,roughness:0,metalness:1}));
+    ring.position.y=-.1;g.add(ring);
+    g.position.set(x,0,0);g.castShadow=true;
+    scene.add(g);return g;
+  }
+  const chars=[
+    makeCharacter(-3,0x4f8ef7),
+    makeCharacter(0,0x7c3aed),
+    makeCharacter(3,0x06d6a0)
+  ];
+
+  // Swap arc between characters
+  function makeArc(from,to,color){
+    const pts=[];
+    for(let i=0;i<=20;i++){
+      const t=i/20,x=from+(to-from)*t,y=Math.sin(t*Math.PI)*2;
+      pts.push(new THREE.Vector3(x,y+1.2,0));
+    }
+    const geo=new THREE.BufferGeometry().setFromPoints(pts);
+    const mat=new THREE.LineBasicMaterial({color,transparent:true,opacity:.6});
+    return new THREE.Line(geo,mat);
+  }
+  scene.add(makeArc(-3,0,0x4f8ef7));
+  scene.add(makeArc(0,3,0x06d6a0));
+
+  // Rings of particles
+  const pGeo=new THREE.BufferGeometry();
+  const pPos=[];
+  for(let i=0;i<300;i++){
+    const a=Math.random()*Math.PI*2,r=4+Math.random()*6;
+    pPos.push(Math.cos(a)*r,(Math.random()-.3)*4,Math.sin(a)*r-4);
+  }
+  pGeo.setAttribute('position',new THREE.Float32BufferAttribute(pPos,3));
+  scene.add(new THREE.Points(pGeo,new THREE.PointsMaterial({color:0x4f8ef7,size:.06,transparent:true,opacity:.5})));
+
+  let t=0;
+  function animate(){
+    requestAnimationFrame(animate);
+    t+=.008;
+    nodes.forEach(n=>{
+      n.mesh.position.y=1.5+Math.sin(t*n.speed+n.offset)*1.2;
+      n.mesh.rotation.y+=.01;
+    });
+    chars[0].position.y=Math.sin(t)*0.15;chars[0].rotation.y=Math.sin(t*.5)*.2;
+    chars[1].position.y=Math.sin(t+1)*0.15;chars[1].rotation.y=t*.3;
+    chars[2].position.y=Math.sin(t+2)*0.15;chars[2].rotation.y=Math.sin(t*.4)*.2;
+    camera.position.x=Math.sin(t*.1)*2;
+    camera.lookAt(0,2,0);
+    renderer.render(scene,camera);
+  }
+  animate();
+
+  window.addEventListener('resize',()=>{
+    camera.aspect=canvas.offsetWidth/canvas.offsetHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(canvas.offsetWidth,canvas.offsetHeight);
+  });
+}
+
+// ─── THREE.JS MINI SCENE (map visualization) ─
+function initMini(){
+  const wrap=document.getElementById('mini-canvas');
+  const renderer2=new THREE.WebGLRenderer({antialias:true,alpha:true});
+  renderer2.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer2.setSize(wrap.offsetWidth-2,wrap.offsetHeight-2);
+  wrap.insertBefore(renderer2.domElement,wrap.firstChild);
+
+  const scene2=new THREE.Scene();
+  const cam2=new THREE.PerspectiveCamera(50,wrap.offsetWidth/wrap.offsetHeight,0.1,100);
+  cam2.position.set(0,8,10);cam2.lookAt(0,0,0);
+
+  scene2.add(new THREE.AmbientLight(0x1a2a4a,3));
+  const dl2=new THREE.DirectionalLight(0x4f8ef7,4);dl2.position.set(3,6,3);scene2.add(dl2);
+  const pl3=new THREE.PointLight(0x06d6a0,5,20);pl3.position.set(-2,4,0);scene2.add(pl3);
+
+  // Flat map base
+  const map=new THREE.Mesh(new THREE.PlaneGeometry(16,10),new THREE.MeshStandardMaterial({color:0x0d1628,roughness:.9}));
+  map.rotation.x=-Math.PI/2;scene2.add(map);
+  scene2.add(new THREE.GridHelper(16,16,0x1a3a6a,0x0d2040));
+
+  // Location pins (people swapping)
+  const pinPositions=[[-3,0,1],[0,0,0],[2,0,-1],[-1,0,-2],[3,0,2],[1,0,2],[-2,0,0],[4,0,-1],[-4,0,1]];
+  const pinColors=[0x4f8ef7,0x06d6a0,0x7c3aed,0xf59e0b,0xec4899,0x4f8ef7,0x06d6a0,0xf97316,0x7c3aed];
+  const pins=pinPositions.map((pos,i)=>{
+    const g=new THREE.Group();
+    const sphere=new THREE.Mesh(new THREE.SphereGeometry(.2,12,12),new THREE.MeshStandardMaterial({color:pinColors[i],emissive:pinColors[i],emissiveIntensity:.7,roughness:.1,metalness:.8}));
+    sphere.position.y=.2;g.add(sphere);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(.35,.04,6,24),new THREE.MeshStandardMaterial({color:pinColors[i],emissive:pinColors[i],emissiveIntensity:.5}));
+    ring.rotation.x=Math.PI/2;g.add(ring);
+    g.position.set(...pos);scene2.add(g);return{g,offset:Math.random()*Math.PI*2,speed:.5+Math.random()*.5};
+  });
+
+  // Connection arcs between pins
+  [[0,1],[1,2],[0,4],[2,5],[3,6]].forEach(([a,b])=>{
+    const from=pinPositions[a],to=pinPositions[b];
+    const pts=[];
+    for(let i=0;i<=12;i++){
+      const t=i/12;
+      pts.push(new THREE.Vector3(from[0]+(to[0]-from[0])*t,Math.sin(t*Math.PI)*1.5,from[2]+(to[2]-from[2])*t));
+    }
+    scene2.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:0x4f8ef7,transparent:true,opacity:.3})));
+  });
+
+  let t2=0;
+  function anim2(){
+    requestAnimationFrame(anim2);
+    t2+=.015;
+    pins.forEach(p=>{p.g.position.y=Math.sin(t2*p.speed+p.offset)*.3;p.g.children[0].material.emissiveIntensity=.5+Math.sin(t2*2+p.offset)*.3;});
+    cam2.position.x=Math.sin(t2*.1)*2;cam2.lookAt(0,0,0);
+    renderer2.render(scene2,cam2);
+  }
+  anim2();
+}
+
+// ─── INIT ─────────────────────────────────
+window.addEventListener('load',()=>{
+  renderCards(skills);
+  renderLeaderboard();
+  renderCategories();
+  renderActivity();
+  animateCount(document.getElementById('stat1'),2847);
+  animateCount(document.getElementById('stat2'),9312);
+  animateCount(document.getElementById('stat3'),15480);
+  setTimeout(()=>{initHero();initMini();},100);
+});
+</script>
+</body>
+</html>
